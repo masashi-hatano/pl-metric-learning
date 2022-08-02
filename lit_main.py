@@ -31,11 +31,11 @@ def main(config):
     train_logger = loggers.TensorBoardLogger("tensor_board", default_hp_metric=False)
 
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
+        monitor="val_acc",
         dirpath="checkpoints/",
-        filename="{epoch:02d}-{val_loss:.2f}",
+        filename="{epoch:02d}-{val_acc:.2f}",
         save_top_k=5,
-        mode="min",
+        mode="max",
     )
 
     trainer = Trainer(
