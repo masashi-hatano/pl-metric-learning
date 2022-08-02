@@ -5,7 +5,7 @@ hydra:
 main:
   monitored_metric: "val_loss" # "val_acc", "validation_metric_loss" or "validation_metric_loss"
   seed: 42
-  ckpt_pth: "C:\\Users\\masashi\\Python\\pl-metric-learning\\output\\checkpoints\\epoch=18-val_loss=18.67.ckpt"
+  ckpt_pth: "C:\\Users\\masashi\\Python\\pl-metric-learning\\output\\2022-08-02\\16-42-02\\checkpoints\\epoch=19-val_acc=0.75.ckpt"
   train_mode: "train"
 
   trainer:
@@ -31,7 +31,7 @@ model_config:
     replace_stride_with_dilation:
     norm_layer:
   backborn: "resnet50"
-  pretrained: False
+  pretrained: True
 
   # LOSS
   loss: "ArcFace" # "Triplet", "ArcFace" or "SoftTriple"
@@ -60,5 +60,6 @@ data_module:
   std: [0.247, 0.243, 0.261]
   batch_size: 32
   num_workers: 8
+  img_size: 32
 
   train_val_split: 
