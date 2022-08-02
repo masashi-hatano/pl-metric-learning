@@ -1,1 +1,1 @@
-# pl-classification
+# pl-metric-learning

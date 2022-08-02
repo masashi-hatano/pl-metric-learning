@@ -1,0 +1,64 @@
+hydra:
+  run:
+    dir: ./output/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+main:
+  monitored_metric: "val_loss" # "val_acc", "validation_metric_loss" or "validation_metric_loss"
+  seed: 42
+  ckpt_pth: "C:\\Users\\masashi\\Python\\pl-classification\\output\\checkpoints\\epoch=18-val_loss=18.67.ckpt"
+  train_mode: "train"
+
+  trainer:
+    gpus: [0]
+    max_epochs: 20
+
+  logger:
+    use_wandb: False
+    name: experiment_cifar10_metric-learning # name of your experiment
+    tags: [] # add tags to organize experiment
+
+    # DO NOT MODIFY THE TWO LINES BELOW!
+    entity: "" 
+    project: ""
+
+model_config:
+  # MODEL PARAMS
+  params:
+    out_features: 512
+    zero_init_residual: False
+    groups: 1
+    width_per_group: 64
+    replace_stride_with_dilation:
+    norm_layer:
+  backborn: "resnet50"
+  pretrained: False
+
+  # LOSS
+  loss: "ArcFace" # "Triplet", "ArcFace" or "SoftTriple"
+
+  # OPTIMIZER
+  regularize_embedder: False
+  lr: 1e-3
+  lr_decay_freq: 10
+  weight_decay: 1e-5
+
+data_module:
+  data_dir: "C:\\Users\\masashi\\Python\\pl-classification\\data"
+  class_names: 
+    - airplane
+    - automobile
+    - bird
+    - cat
+    - deer
+    - dog
+    - frog
+    - horse
+    - ship
+    - truck
+
+  mean: [0.491, 0.482, 0.447]
+  std: [0.247, 0.243, 0.261]
+  batch_size: 32
+  num_workers: 8
+
+  train_val_split: 
