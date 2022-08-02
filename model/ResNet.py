@@ -127,7 +127,7 @@ class ResNet(nn.Module):
         self, 
         block, 
         layers, 
-        out_features=512, 
+        out_features=1000, 
         zero_init_residual=False,
         groups=1, 
         width_per_group=64, 
@@ -229,11 +229,13 @@ class ResNet(nn.Module):
 
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
-    model = ResNet(block, layers, **kwargs)
     if pretrained:
+        model = ResNet(block, layers)
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
         model.load_state_dict(state_dict)
+    else:
+        model = ResNet(block, layers, **kwargs)
     return model
 
 

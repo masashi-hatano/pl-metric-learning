@@ -1,8 +1,12 @@
 from typing import List
+import os
 
 import pytorch_lightning as pl
 import torch
+from torch import nn
 from pytorch_metric_learning import distances, losses, miners, reducers, regularizers
+import umap
+import matplotlib.pyplot as plt 
 
 from .ResNet import resnet18, resnet34, resnet50, resnet101, resnet152
 
@@ -78,7 +82,7 @@ class MetricTrainer(pl.LightningModule):
         embedding = self.embedder(x)
         loss_emb = self.lossfun_emb(embedding, t)
         logits = self.get_logits(embedding)
-        results = {"loss": loss_emb}
+        results = {"loss": loss_emb, "logits": logits.detach(), "target": t.detach()}
 
         return results
 
@@ -88,10 +92,10 @@ class MetricTrainer(pl.LightningModule):
         metric_loss = torch.stack([tmp["loss"] for tmp in outputs]).mean()
         self.log("train_metric_loss", metric_loss, on_step=False)
 
-        # logits, targets = self._aggregate_result(outputs, ["logits", "target"])
-        # preds = torch.argmax(logits, dim=1)
-        # acc = float(torch.sum(targets == preds)) / len(targets)
-        self.log("train_loss", metric_loss)
+        logits, targets = self._aggregate_result(outputs, ["logits", "target"])
+        preds = torch.argmax(logits, dim=1)
+        acc = float(torch.sum(targets == preds)) / len(targets)
+        self.log("train_acc", acc)
 
     def validation_step(self, batch, batch_idx):
         """Validation step, called once per mini-batch.
@@ -107,10 +111,12 @@ class MetricTrainer(pl.LightningModule):
         t = t.view(-1)
         embedding = self.embedder(x)
         loss_emb = self.lossfun_emb(embedding, t)
+        logits = self.get_logits(embedding)
         results = {
-            "val_metric_loss": loss_emb,
-            "embedding": embedding.detach(),
-            "target": t.detach(),
+            "val_metric_loss": loss_emb, 
+            "embedding":embedding.detach(), 
+            "logits": logits.detach(), 
+            "target": t.detach()
         }
 
         return results
@@ -124,10 +130,13 @@ class MetricTrainer(pl.LightningModule):
         metric_loss = torch.stack([tmp["val_metric_loss"] for tmp in outputs]).mean()
         self.log("validation_metric_loss", metric_loss.mean(), on_step=False)
 
-        # logits, targets = self._aggregate_result(outputs, ["logits", "target"])
-        # preds = torch.argmax(logits, dim=1)
-        # acc = float(torch.sum(targets == preds)) / len(targets)
-        self.log("val_loss", metric_loss)
+        embedding, logits, targets = self._aggregate_result(outputs, ["embedding", "logits", "target"])
+        preds = torch.argmax(logits, dim=1)
+        acc = float(torch.sum(targets == preds)) / len(targets)
+        self.log("val_acc", acc)
+
+        if self.global_step:
+            self.embedding_plot(embedding, targets)
 
     def test_step(self, batch, batch_idx):
         """Return outputs of forward path
@@ -142,80 +151,33 @@ class MetricTrainer(pl.LightningModule):
         x, t = batch
         t = t.view(-1)
         embedding = self.embedder(x)
+        loss_emb = self.lossfun_emb(embedding, t)
+        logits = self.get_logits(embedding)
         results = {
-            "embedding": embedding.detach(),
-            "target": t.detach(),
+            "test_metric_loss": loss_emb, 
+            "embedding":embedding.detach(), 
+            "logits": logits.detach(), 
+            "target": t.detach()
         }
 
         return results
 
-    # def test_epoch_end(self, outputs: dict) -> None:
-    #     """At the end of test, this calculates mahalanobis/cos distance.
+    def test_epoch_end(self, outputs: dict) -> None:
+        """At the end of test, this calculates mahalanobis/cos distance.
 
-    #     Args:
-    #         outputs (None): None
-    #     """
+        Args:
+            outputs (None): None
+        """
+        metric_loss = torch.stack([tmp["test_metric_loss"] for tmp in outputs]).mean()
+        self.log("test_metric_loss", metric_loss.mean(), on_step=False)
 
-    #     # Moving tensor by .to() is prohibited for lightning
-    #     self.cluster_centre = self.cluster_centre.new_tensor(
-    #         self.cluster_centre, device=self.device
-    #     )
-    #     self.cluster_cov = self.cluster_cov.new_tensor(
-    #         self.cluster_cov, device=self.device
-    #     )
+        embedding, logits, targets = self._aggregate_result(outputs, ["embedding", "logits", "target"])
+        preds = torch.argmax(logits, dim=1)
+        acc = float(torch.sum(targets == preds)) / len(targets)
+        self.log("test_acc", acc)
 
-    #     embeddings, logits, targets = self._aggregate_result(
-    #         outputs, ["embedding", "logits", "target"]
-    #     )
-
-    #     preds = torch.argmax(logits, dim=1)
-    #     acc = float(torch.sum(targets == preds)) / len(targets)
-
-    #     target_centre = self.cluster_centre[self.object_cluster_idx]
-    #     pre_act_target_centre = self.cluster_centre[self.object_cluster_idx - 1]
-
-    #     if not self.use_ensemble_distance:
-    #         cos_dis = log_helpers.log_cosine_distance(
-    #             points=embeddings,
-    #             centre=target_centre.unsqueeze(0),
-    #             centres=self.cluster_centre,
-    #             targets=targets,
-    #             object_cluster_idx=self.object_cluster_idx,
-    #             offset=5,
-    #         )
-    #     else:
-    #         cos_dis = log_helpers.log_ensemble_cosine_distance(points=embeddings, centre=target_centre.unsqueeze(0),
-    #                                                            centres=self.cluster_centre, targets=targets,
-    #                                                            object_cluster_idx=self.object_cluster_idx,
-    #                                                            pre_act_center=pre_act_target_centre.unsqueeze(0),
-    #                                                            offset=5, logits=logits)
-
-    #     mah_dis = log_helpers.log_mahalanovis(
-    #         embeddings,
-    #         self.cluster_centre,
-    #         covariances=self.cluster_cov,
-    #         targets=targets,
-    #         object_cluster_idx=self.object_cluster_idx,
-    #         offset=5,
-    #     )
-
-    #     fp_score, tp_score, ftp_score = self.future_metrics(torch.from_numpy(cos_dis).clone(), targets)
-
-    #     log_helpers.log_embedding_plot(
-    #         self,
-    #         self.num_classes,
-    #         self.hparams.class_names,
-    #         outputs,
-    #         title="Test",
-    #         is_wandb=self.hparams.use_wandb,
-    #         pca_obj=self.reductor,
-    #     )
-
-    #     self.log("test score", acc)
-    #     self.log("fp_score", fp_score)
-    #     self.log("tp_score", tp_score)
-    #     self.log("ftp_score", ftp_score)
-
+        if self.global_step:
+            self.embedding_plot(embedding, targets)
 
     def _configure_metric_loss(self) -> None:
         """Configure metric regularizer and other tunable parameters for chosen loss function."""
@@ -284,29 +246,22 @@ class MetricTrainer(pl.LightningModule):
 
         return rtn
 
-    # def _log_input(self, query: torch.Tensor) -> None:
-    #     # rgb_imgs = query[:, 0, :3, :, :][:, [2, 1, 0]]
-    #     rgb_imgs = torch.unsqueeze(query[:, 0, 0, :, :], 1)
+    def embedding_plot(self, embedding, labels):
+        mapper = umap.UMAP(random_state=0)
+        embedding = mapper.fit_transform(embedding.cpu())
 
-    #     # renormlize the RGB frames again so that it can be displayed more properly
-    #     rgb_imgs = (rgb_imgs - rgb_imgs.min()) / (rgb_imgs.max() - rgb_imgs.min())
+        os.makedirs("./embedding_plot", exist_ok=True)
 
-    #     # rgb_imgs_numpy_sample = rgb_imgs[0, ...].squeeze().detach().cpu().numpy()
-    #     # np.save("/home/kanhua/rgb_sample.npy", rgb_imgs_numpy_sample)
-
-    #     if self.hparams.use_wandb:
-    #         self.logger.experiment.log(
-    #             {
-    #                 "train_rgb_images": Image(rgb_imgs),
-    #                 "global_step": self.global_step,
-    #             }
-    #         )
-    #     else:
-    #         self.logger.experiment.add_images(
-    #             "train_rgb_images", rgb_imgs, self.global_step
-    #         )
+        plt.figure(figsize=(13, 7))
+        plt.scatter(embedding[:, 0], embedding[:, 1],
+                    c=labels.cpu(), cmap='jet',
+                    s=15, alpha=0.5)
+        plt.axis('off')
+        plt.colorbar()
+        plt.savefig(f'embedding_plot/{self.current_epoch}.png',dpi=600)
+        plt.close()
     
-    def prep_backborn(self, backborn, pretrained, hparams):
+    def _backborn(self, backborn, pretrained, hparams):
         if backborn=="resnet18":
             return resnet18(pretrained, **hparams)
         elif backborn=="resnet34":
@@ -319,3 +274,10 @@ class MetricTrainer(pl.LightningModule):
             return resnet152(pretrained, **hparams)
         else:
             raise Exception("Backborn option: resnet18, resnet34, resnet50, resnet101, or resnet152")
+    
+    def prep_backborn(self, backborn, pretrained, hparams):
+        model = self._backborn(backborn, pretrained, hparams)
+        if pretrained:
+            in_features = model.fc.in_features
+            model.fc = nn.Linear(in_features=in_features, out_features=self.embedding_size)
+        return model
