@@ -8,6 +8,7 @@ class Cifar10DataModule(pl.LightningDataModule):
 
         self.cfg = config.data_module
         self.transform = transforms.Compose([
+            transforms.Resize((self.cfg.img_size, self.cfg.img_size)),
             transforms.ToTensor(),
             transforms.Normalize(
                 self.cfg.mean, 
