@@ -5,7 +5,7 @@ hydra:
 main:
   monitored_metric: "val_loss" # "val_acc", "validation_metric_loss" or "validation_metric_loss"
   seed: 42
-  ckpt_pth: "C:\\Users\\masashi\\Python\\pl-classification\\output\\checkpoints\\epoch=18-val_loss=18.67.ckpt"
+  ckpt_pth: "C:\\Users\\masashi\\Python\\pl-metric-learning\\output\\checkpoints\\epoch=18-val_loss=18.67.ckpt"
   train_mode: "train"
 
   trainer:
@@ -43,7 +43,7 @@ model_config:
   weight_decay: 1e-5
 
 data_module:
-  data_dir: "C:\\Users\\masashi\\Python\\pl-classification\\data"
+  data_dir: "C:\\Users\\masashi\\Python\\pl-metric-learning\\data"
   class_names: 
     - airplane
     - automobile
