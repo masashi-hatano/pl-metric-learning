@@ -19,6 +19,26 @@ Normally, you don't need to change anything here.
 lit_MetricTrainer is the most important part of the implementation as it defines each step of train,val, and test.
 
 ## How to run the code
+First, you need to create the virtural environment.
+```
+python -m venv pl-metric
+```
+And then, activate the virtural environment.  
+(for Windows)
+```
+./pl-metric/Scripts/activate
+```
+(for Mac or Linux)
+```
+source pl-metric/bin/activate
+```
+
+Second, you need to install libraries to execute the code.
+```
+pip -r install requirements.txt
+```
+
+Finally, you are ready to run the code!  
 ```
 python lit_main.py
 ```
