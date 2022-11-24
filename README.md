@@ -1,5 +1,14 @@
-# pl-metric-learning
-In this repository, we implemented metric learning for cifar-10 classification by using hydra+pytorch-lightning.
+<div align="center">
+
+# Pytorch-Lightning Metric Learning
+
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+<a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
+<a href="https://hydra.cc/"><img alt="Config: Hydra" src="https://img.shields.io/badge/Config-Hydra-89b8cd"></a>
+  
+  In this repository, we implemented metric learning for cifar-10 classification by using hydra+pytorch-lightning.
+  
+</div>
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/71377772/182391423-a6bd7d65-4a6b-4584-96bb-e87b8df5c713.gif" width=75% height=75% />
